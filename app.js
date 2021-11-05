@@ -27,7 +27,7 @@ io.on('connection', (socket) => {
 
 
 
-http.listen(8082, () => {
+http.listen(8080, () => {
 
-    console.log("Server launched on port 8082");
+    console.log("Server launched on port 8080");
 })
