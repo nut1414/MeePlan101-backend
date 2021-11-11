@@ -29,10 +29,11 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
 app.use(express.static('public'))
-
+app.set('socketio',io)
 
 const authJwt = require('./middlewares/verifyToken')
 const verifySignUp = require('./middlewares/checkDuplicate')
+const verifySocket = require('./middlewares/verifySocket')
 
 require('./routes/auth')(app);
 //require('./app/routes/user.routes')(app);
@@ -48,10 +49,11 @@ function getPage(page){
 
 
 
-io.on('connection', (socket) => {
+io.on('connection', verifySocket, (socket) => {
   console.log('Connected');
   console.log(socket.id);
   console.log("JWT token: ", socket.handshake.headers)
+
   socket.on('time', (data) => {
     console.log("Time from Client :", data);
   })

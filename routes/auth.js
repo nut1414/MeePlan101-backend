@@ -1,5 +1,5 @@
 const checkDuplicate = require("../middlewares/checkDuplicate");
-const controller = require("../controllers/auth");
+const auth = require("../controllers/auth");
 
 module.exports = (app) => {
   app.use((req, res, next) => {
@@ -10,7 +10,7 @@ module.exports = (app) => {
     next();
   });
 
-  app.post("/api/auth/signup", checkDuplicate, controller.signup);
+  app.post("/api/auth/signup", checkDuplicate, auth.signup);
 
-  app.post("/api/auth/signin", controller.signin);
+  app.post("/api/auth/signin", auth.signin);
 };
