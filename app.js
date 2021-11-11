@@ -29,15 +29,14 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
 app.use(express.static('public'))
-app.set('socketio',io)
 
 const authJwt = require('./middlewares/verifyToken')
 const verifySignUp = require('./middlewares/checkDuplicate')
-const verifySocket = require('./middlewares/verifySocket')
+
 
 require('./routes/auth')(app);
 //require('./app/routes/user.routes')(app);
-
+const verifySocket = require('./middlewares/verifySocket')
 function getPage(page){
     const filePath = path.join(__dirname, page)
     return fs.readFileSync(filePath)
@@ -45,11 +44,10 @@ function getPage(page){
 
 
 
+io.use(verifySocket)
 
 
-
-
-io.on('connection', verifySocket, (socket) => {
+io.on('connection', (socket) => {
   console.log('Connected');
   console.log(socket.id);
   console.log("JWT token: ", socket.handshake.headers)

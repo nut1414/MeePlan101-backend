@@ -6,6 +6,6 @@ var UserModel = mongoose.model("User",new mongoose.Schema({
   email: String,
   tasks: [Task],
   password: String, //for password
-}, {timestamps: true}));
+}, {timestamps: true,strictPopulate:false}),"users");
 
 module.exports = UserModel;

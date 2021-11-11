@@ -21,16 +21,17 @@ exports.signup = (req, res) => {
 };
 
 exports.signin = (req, res) => {
+  
+  
   User.findOne({
     username: req.body.username
-  })
-    .populate("-__v")
-    .exec((err, user) => {
+  }).exec((err, user) => {
+      console.log(user)
       if (err) {
         res.status(500).send({ message: err });
         return;
       }
-
+      
       if (!user) {
         return res.status(404).send({ message: "User Not found." });
       }
@@ -47,7 +48,7 @@ exports.signin = (req, res) => {
         });
       }
 
-      var token = jwt.sign({ id: user.id }, process.env.secret, {
+      var token = jwt.sign({ id: user.id }, process.env.SECRET, {
         expiresIn: 86400 // 24 hours
       });
 
