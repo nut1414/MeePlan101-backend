@@ -39,24 +39,40 @@
 <div>
   <br><br><br>
   <!-- <h2 align="center">Coming soon...</h2> -->
-  <form action="">
-    <label>Username: </label>
-    <input type = "text" id = "username">
+  <h>Add task</h>
+  <!-- <script>
+    function writeTask(){
+      var taskName = document.getElementByID("username"),
+          taskDate = document.getElementByID("email"),
+          task = document.getElementByID("password")
+      var signUpInput = {
+        username = 
+      }
+      
+          
+    }
+  </script> -->
+  <!-- <form action="POST" >
+    <label>Task: </label>
+    <input type = "text" id = "username"><br>
+    <label>Email:</label>
+    <input type = "text" id = "email"><br>
+    <label>Password:</label>
+    <input type = "text" id = "password"><br>
     <button type="submit" class= "btn-submit" onclick = 'writeUserInfo()'>Send InFo</button>
-  </form><br>
-  <form action="">
+  </form><br> -->
+  <!-- <form action="">
     <label>Task: </label>
     <input type = "text" id = "checkusername" placeholder="Username">
     <input type = "date" id = "taskDate" min="2018-01-01" max="2025-12-31">
     <input type="text" id = "taskName">
     <button type="submit" class= "btn-submit" onclick = 'writeTask()'>Add Task</button>
-  </form>
+  </form> -->
 </div>
-<script src="/socket.io/socket.io.js"></script>
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
   var socket = io();
-
   
 </script>
 </body>

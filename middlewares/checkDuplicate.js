@@ -1,10 +1,9 @@
 const db = require("../models");
-const User = db.user;
 
 checkDuplicateUsernameOrEmail = (req, res, next) => {
   // Username
   console.log(req.body)
-  User.findOne({
+  db.user.findOne({
     username: req.body.username
   }).exec((err, user) => {
     if (err) {
@@ -21,7 +20,7 @@ checkDuplicateUsernameOrEmail = (req, res, next) => {
       return;
     }
     // Email
-    User.findOne({
+    db.user.findOne({
       email: req.body.email
     }).exec((err, user) => {
       if (err) {
