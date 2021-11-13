@@ -39,11 +39,12 @@ require('./routes/auth')(app);
 //require('./app/routes/user.routes')(app);
 const verifySocket = require('./middlewares/verifySocket')
 const taskHandler = require('./middlewares/taskHandler')
+/*
 function getPage(page){
     const filePath = path.join(__dirname, page)
     return fs.readFileSync(filePath)
 }
-
+*/
 
 
 io.use(verifySocket)
@@ -67,7 +68,7 @@ io.on('connection', (socket) => {
         name: data.name,
         description: data.description,
         level: data.level,
-        done: false,
+        done: data.done,
         date: data.date
       }
       doc.tasks.push(newTask);
@@ -90,7 +91,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('edit',(data)=>{
-    db.user.findById(socket.decoded.id,(err,doc)=>{
+    db.user.findById(socket.decoded.id,(err,docs)=>{
       if(err){
         console.log(err)
         return
@@ -98,18 +99,18 @@ io.on('connection', (socket) => {
       
       //doc.tasks.findOne()
 
-      for(var i = 0; i < doc.tasks.length;  i++){
-        if(doc.tasks[i]._id==data.id){
-           console.log(doc.tasks[i])
+      for(let i = 0; i < docs.tasks.length;  i++){
+        if(docs.tasks[i]._id==data.id){
+           console.log(docs.tasks[i])
            let updateTask = {
               name: data.name,
               description: data.description,
               level: data.level,
               done: data.done,
               date: data.date,
-              _id: doc.tasks[i]._id
+              _id: docs.tasks[i]._id
             }
-           doc.tasks.set(i, updateTask)
+           docs.tasks.set(i, updateTask)
       //       $set : {
       //           name : data.name
       //           // description : data.description,
@@ -120,8 +121,7 @@ io.on('connection', (socket) => {
         }
       }
 
-          doc.save();
-          console.log("--Successful--")
+        docs.save();
 
     
     })
@@ -138,35 +138,135 @@ io.on('connection', (socket) => {
           {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
           {$unwind:"$tasks"},
           {$match:{"tasks.date":{$gte: new Date(data.lwr),
-                       $lte: new Date(data.upr)}
-                       }},
-          {$project:{"name": "$tasks.name","description":"$tasks.description","level":"$tasks.level","done":"$tasks.level","date":"$tasks.date"}}
+                                 $lte: new Date(data.upr)}
+                  }},
+          {$project:{"_id":"$tasks._id","name": "$tasks.name","description":"$tasks.description","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date"}}
           
           ]).exec((err,result) =>{
+            if(err){
+              console.log(err)
+              return
+            }
              //placeholder will replace with emit or acknowledgement
              console.log(result)
           })
-   
+  })
+
+  
+  socket.on('pgstatus_iot',(data)=>{
+    //db.user.findOne({devices: {"$in": [ data.iot_id ]  }},(err,doc)=>{
+    //  console.log(doc);
+    //})
+    db.user.aggregate([
+      {$match:{"devices":{"$in": [ data.iot_id ]  }}},
+      {$unwind:"$tasks"},
+      {$match:{"tasks.date":{$gte: new Date()}}},
+      {$project:{"_id":"$tasks._id","name": "$tasks.name","description":"$tasks.description","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date"}},
+      ]).exec((err,docs)=> {
+        
+        if(err){
+          console.log(err)
+          return
+        }
+        result = {
+          pgcount: Math.ceil(docs.length/4),
+          count: docs.length,
+          donecount: docs.filter((task)=>task.done).length
+        }
+        console.log(result)
+      })
   })
   //list for iot
   //input page number
   //output all task in that page number, page number count
   socket.on('list_iot',(data)=>{
+    db.user.aggregate([
+      {$match:{"devices":{"$in": [ data.iot_id ]  }}},
+      {$unwind:"$tasks"},
+      {$match:{"tasks.date":{$gte: new Date()}}},
+      {$project:{"_id":"$tasks._id","name": "$tasks.name","description":"$tasks.description","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date"}},
+      {$sort:{date:1}}
+      ]).exec((err,docs)=> {
+        if(err){
+          console.log(err)
+          return
+        }
+        let pg = Number(data.pg)
+        let pgcount = Math.ceil(docs.length / 4)
+        if(pg > pgcount) {
+          pg = pgcount
+        }else if (pg < 1){
+          pg = 1
+        }
+        result = docs.slice((4*(pg-1)), (4*pg))
+        console.log(result)
+      })
+  })
+  socket.on('edit_iot',(data)=>{
+     if(data.done)
+     db.user.findOne({"devices": {"$in": [ data.iot_id ] }},(err,docs)=>{
+       if(err){
+          console.log(err)
+          return
+        }
+       console.log(docs)
+       for(let i = 0; i < docs.tasks.length;  i++){
+        if(docs.tasks[i]._id==data.id){
+           console.log(docs.tasks[i])
+           let updateTask = {
+              name: docs.tasks[i].name,
+              description: docs.tasks[i].description,
+              level: docs.tasks[i].level,
+              done: data.done,
+              date: docs.tasks[i].date,
+              _id: docs.tasks[i]._id
+            }
+           docs.tasks.set(i, updateTask)
+           break
+        }
+      }
+      docs.save();
+     })
+
+    
+  })
+
+  socket.on('list_iot_id',(data)=>{
     db.user.findById(socket.decoded.id,(err,doc)=>{
       if(err){
         console.log(err)
-        return;
+        return
       }
-      let result = {
-        s: 0,
-        data: []
+      //placeholder will replace with emit or acknowledgement
+      result =  doc.devices;
+      console.log(result);
+    })
+  })
+  socket.on('add_iot_id',(data)=>{
+    db.user.findById(socket.decoded.id,(err,doc)=>{
+      if(err){
+        console.log(err)
+        return
+      }
+      if(data.iot_id) {
+        doc.devices.push(data.iot_id)
+      doc.save()
+      console.log('new device saved')
       }
       
     })
   })
-
-
-
+  
+  socket.on('delete_iot_id',(data)=>{
+    db.user.findById(socket.decoded.id,(err,doc)=>{
+      if(err){
+        console.log(err)
+        return
+      }
+      doc.devices = doc.devices.filter(id => id !== data.iot_id)
+      doc.save();
+  })
+  })
 
   socket.on('time', (data) => {
     console.log("Time from Client :", data)
@@ -184,6 +284,7 @@ io.on('connection', (socket) => {
 })
 
 app.get('/', (req, res) => {
+  /*
   const fileType = path.extname(req.url)|| '.html';
     if(fileType === '.html'){
         if(req.url === '/'){
@@ -194,7 +295,8 @@ app.get('/', (req, res) => {
             res.write(getPage(`${req.url}.html`))
         }
     }
-  res.end()
+  res.end()*/
+  res.status(200).send("Service is Online.")
 })
 
 

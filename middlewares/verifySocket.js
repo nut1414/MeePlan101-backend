@@ -11,8 +11,8 @@ module.exports = (socket,next) =>{
         next()
         
     })
-  }else if (socket.handshake.query.deviceID){
-
+  }else if (socket.handshake.headers == "arduino-WebSocket-Client"){
+    next()
   }
   else{
     next(new Error('Auth Error'))

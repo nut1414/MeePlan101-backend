@@ -13,10 +13,10 @@ exports.signup = (req, res) => {
   });
   user.save((err, user) => {
     if (err) {
-      res.status(500).send({ message: err });
+      res.status(500).send({status: "error" ,message: err });
       return;
     }
-    res.send({ message: "User was registered successfully!" });  
+    res.send({status: "ok" ,message: "User was registered successfully!" });  
   });
 };
 
@@ -25,12 +25,12 @@ exports.signin = (req, res) => {
     username: req.body.username
   }).exec((err, user) => {
       if (err) {
-        res.status(500).send({ message: err });
+        res.status(500).send({status: "error", message: err });
         return;
       }
       
       if (!user) {
-        return res.status(404).send({ message: "User Not found." });
+        return res.status(404).send({status: "error",  message: "User Not found." });
       }
 
       var passwordIsValid = bcrypt.compareSync(
@@ -40,6 +40,7 @@ exports.signin = (req, res) => {
 
       if (!passwordIsValid) {
         return res.status(401).send({
+          status: "error",
           accessToken: null,
           message: "Invalid Password!"
         });
