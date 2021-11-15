@@ -52,7 +52,6 @@ io.on('connection', (socket) => {
   console.log(socket.id)
   socket.emit("update",{})
   //console.log("JWT token: ", socket.handshake.headers)
-  // { event, {bla bla}  }
   socket.on('create',(data)=>{
 
     db.user.findById(socket.decoded.id,(err,doc)=>{
@@ -142,8 +141,8 @@ io.on('connection', (socket) => {
           {$match:{"tasks.date":{$gte: new Date(data.lwr),
                                  $lte: new Date(data.upr)}
                   }},
-          {$project:{"_id":"$tasks._id","name": "$tasks.name","description":"$tasks.description","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date"}}
-          
+          {$project:{"_id":"$tasks._id","name": "$tasks.name","description":"$tasks.description","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date"}},
+          {$sort:{status:1,date:1}}
           ]).exec((err,result) =>{
             if(err){
               console.log(err)
@@ -212,7 +211,7 @@ io.on('connection', (socket) => {
           processed.push( Object.values(task))
         }
         console.log(processed)
-        socket.emit("list_iot",{s: processed.length,"data":processed})
+        socket.emit("list_iot",{s: processed.length,pg,pgcount,"data":processed})
         }catch(err){
           console.log(err)
         }
@@ -296,7 +295,7 @@ io.on('connection', (socket) => {
   })
   socket.on('task', () => {
     let buffer = { s: 4, data: [["TEST1", `${randomInt(100000)}`, "No Due", `${randomInt(5)}`, `${randomInt(1)}`], ["TEST2", `${randomInt(100000)}`, "No Due", `${randomInt(5)}`, `${randomInt(1)}`], ["TEST3", `${randomInt(100000)}`, "No Due", `${randomInt(5)}`, `${randomInt(1)}`], ["TEST4", `${randomInt(100000)}`, "No Due", `${randomInt(5)}`, `${randomInt(1)}`]] }
-    io.to(socket.decoded.id).emit("update", buffer)
+    socket.emit("update", buffer)
     console.log(buffer)
   })
 
