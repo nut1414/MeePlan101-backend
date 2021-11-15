@@ -48,7 +48,9 @@ io.on('connection', (socket) => {
   console.log(socket.decoded.id)
   
   socket.join(socket.decoded.id);
+  console.log(socket.rooms);
   console.log(socket.id)
+  socket.emit("update",{})
   //console.log("JWT token: ", socket.handshake.headers)
   // { event, {bla bla}  }
   socket.on('create',(data)=>{
@@ -62,7 +64,7 @@ io.on('connection', (socket) => {
         name: data.name,
         description: data.description,
         level: data.level,
-        done: data.done,
+        done: false,
         date: data.date
       }
       doc.tasks.push(newTask);
@@ -70,7 +72,7 @@ io.on('connection', (socket) => {
       console.log('new task saved')
       
     })
-    socket.broadcast.emit("update")
+    io.to(socket.decoded.id).emit("update",{})
   })
   
   socket.on('delete',(data)=>{
@@ -84,7 +86,7 @@ io.on('connection', (socket) => {
 
       console.log('task delete')
       doc.save()
-      socket.to(socket.decoded.id).emit("update",{})
+      io.to(socket.decoded.id).emit("update",{})
     })
   })
 
@@ -95,34 +97,35 @@ io.on('connection', (socket) => {
         return
       }
       //เผื่อแก้แบบ
-      // doc.tasks.findOne()
-      // db.user.aggregate([
-      //     {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
-      //     {$unwind:"$tasks"}]).findOneAndUpdate({'_id' : data._id}, {
-      //         name: data.name,
-      //         description: data.description,
-      //         level: data.level,
-      //         done: data.done,
-      //         date: data.date})
-
-      for(let i = 0; i < docs.tasks.length;  i++){
-        if(docs.tasks[i]._id==data.id){
-           console.log(docs.tasks[i])
-           let updateTask = {
+       doc.tasks.findOne()
+      /*
+      db.user.aggregate([
+          {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
+          {$unwind:"$tasks"}]).findOneAndUpdate({'_id' : data._id}, {
               name: data.name,
               description: data.description,
               level: data.level,
               done: data.done,
-              date: data.date,
-              _id: docs.tasks[i]._id
-            }
-           docs.tasks.set(i, updateTask)
-        }
-      }
+              date: data.date})
+      */
+       for(let i = 0; i < docs.tasks.length;  i++){
+         if(docs.tasks[i]._id==data.id){
+            console.log(docs.tasks[i])
+            let updateTask = {
+               name: data.name,
+               description: data.description,
+               level: data.level,
+               done: data.done,
+               date: data.date,
+               _id: docs.tasks[i]._id
+             }
+            docs.tasks.set(i, updateTask)
+         }
+       }
       console.log('task edited')
       docs.save();
 
-      socket.to(socket.decoded.id).emit("update")
+      io.to(socket.decoded.id).emit("update")
     })
   })
 
@@ -183,23 +186,39 @@ io.on('connection', (socket) => {
       {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
       {$unwind:"$tasks"},
       {$match:{"tasks.date":{$gte: new Date()}}},
-      {$project:{"_id":"$tasks._id","name": "$tasks.name","description":"$tasks.description","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date"}},
-      {$sort:{date:1}}
+      {$project:{"_id":"$tasks._id","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date","name": "$tasks.name"}},
+      {$sort:{status:1,date:1}}
       ]).exec((err,docs)=> {
         if(err){
           console.log(err)
           return
         }
-        let pg = Number(data.pg)
-        let pgcount = Math.ceil(docs.length / 4)
-        if(pg > pgcount) {
-          pg = pgcount
-        }else if (pg < 1){
-          pg = 1
-        }
+        try{
+          let pg = Number(data.pg)
+          let pgcount = Math.ceil(docs.length / 4)
+          if(pg > pgcount) {
+            pg = pgcount
+          }else if (pg < 1){
+            pg = 1
+          }
         let resultdata = docs.slice((4*(pg-1)), (4*pg))
-        result = {}
-        console.log(result)
+        resultdata.forEach((element)=>{
+          element.date = element.date.toLocaleDateString('en-GB')
+          element.name2 = element.name.slice(21,42)
+          element.name = element.name.slice(0,20)
+        })
+        let processed = []
+        for(let task of resultdata){
+          processed.push( Object.values(task))
+        }
+        console.log(processed)
+        socket.emit("list_iot",{s: processed.length,"data":processed})
+        }catch(err){
+          console.log(err)
+        }
+          
+        
+        
       })
   })
   socket.on('edit_iot',(data)=>{
@@ -227,7 +246,7 @@ io.on('connection', (socket) => {
       }
       console.log('iot task delete')
       docs.save();
-      socket.to(socket.decoded.id).emit("update")
+      io.to(socket.decoded.id).emit("update")
      })
 
     
@@ -255,7 +274,7 @@ io.on('connection', (socket) => {
       doc.save()
       console.log('new device saved')
       }
-      socket.to(socket.decoded.id).emit("update_setting")
+      io.to(socket.decoded.id).emit("update_setting")
     })
   })
   
@@ -268,7 +287,7 @@ io.on('connection', (socket) => {
       doc.devices = doc.devices.filter(id => id !== data.iot_id)
       console.log('device deleted')
       doc.save();
-      socket.to(socket.decoded.id).emit("update_setting")
+      io.to(socket.decoded.id).emit("update_setting")
   })
   })
 
@@ -277,7 +296,7 @@ io.on('connection', (socket) => {
   })
   socket.on('task', () => {
     let buffer = { s: 4, data: [["TEST1", `${randomInt(100000)}`, "No Due", `${randomInt(5)}`, `${randomInt(1)}`], ["TEST2", `${randomInt(100000)}`, "No Due", `${randomInt(5)}`, `${randomInt(1)}`], ["TEST3", `${randomInt(100000)}`, "No Due", `${randomInt(5)}`, `${randomInt(1)}`], ["TEST4", `${randomInt(100000)}`, "No Due", `${randomInt(5)}`, `${randomInt(1)}`]] }
-    socket.emit("update", buffer)
+    io.to(socket.decoded.id).emit("update", buffer)
     console.log(buffer)
   })
 

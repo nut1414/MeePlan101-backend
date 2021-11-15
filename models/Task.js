@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
 
 const TaskSchema = new mongoose.Schema({
-  name: String,
-  description: String,
-  level: Number,
-  done: Boolean,
-  date: Date
+  name: { type: String, default: "" },
+  description: { type: String, default: "" },
+  level: { type: Number, default: 0 },
+  done: { type: Number, default: 0 },
+  date: { type: String, default: Date.now }
 });
 
 module.exports = TaskSchema;

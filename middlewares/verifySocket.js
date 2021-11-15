@@ -23,8 +23,8 @@ verifySocket = async (socket,next) =>{
       socket.decoded = {id:String(user[0]._id)}
       console.log(user)
     }catch(err){
-      console.log(err)
-      return next(new Error('Auth Error'))
+      socket.decoded = {id:"0"}
+      next()
     } 
        
     
