@@ -24,7 +24,6 @@ verifySocket = async (socket,next) =>{
       console.log(user)
     }catch(err){
       socket.decoded = {id:"0"}
-      next()
     } 
        
     
