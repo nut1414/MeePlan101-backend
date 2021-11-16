@@ -64,7 +64,7 @@ io.on('connection', (socket) => {
         description: data.description,
         level: data.level,
         done: false,
-        date: data.date
+        date: new Date(data.date)
       }
       doc.tasks.push(newTask);
       doc.save()
@@ -73,7 +73,7 @@ io.on('connection', (socket) => {
       })
       io.to(socket.decoded.id).emit("update",{})
     }catch(err){
-
+      console.log(err)
     }
     
   })
@@ -152,7 +152,7 @@ io.on('connection', (socket) => {
               return
             }
              //placeholder will replace with emit or acknowledgement
-             console.log(result)
+             socket.emit("list",result)
           })
 
     }catch (err){
@@ -184,6 +184,7 @@ io.on('connection', (socket) => {
           donecount: docs.filter((task)=>task.done).length
         }
         console.log(result)
+        socket.emit("pgstatus_iot",result)
       })
     }catch(err){
 
@@ -202,6 +203,7 @@ io.on('connection', (socket) => {
       {$project:{"_id":"$tasks._id","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date","name": "$tasks.name"}},
       {$sort:{status:1,date:1}}
       ]).exec((err,docs)=> {
+        console.log(docs)
         if(err){
           console.log(err)
           return
