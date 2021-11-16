@@ -242,7 +242,6 @@ io.on('connection', (socket) => {
   })
   socket.on('edit_iot',(data)=>{
     try{
-      if(data.done)
      db.user.findById(socket.decoded.id,(err,docs)=>{
        if(err){
           console.log(err)
