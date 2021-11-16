@@ -53,8 +53,8 @@ io.on('connection', (socket) => {
   socket.emit("update",{})
   //console.log("JWT token: ", socket.handshake.headers)
   socket.on('create',(data)=>{
-
-    db.user.findById(socket.decoded.id,(err,doc)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
       if(err){
         console.log(err)
         return
@@ -70,12 +70,17 @@ io.on('connection', (socket) => {
       doc.save()
       console.log('new task saved')
       
-    })
-    io.to(socket.decoded.id).emit("update",{})
+      })
+      io.to(socket.decoded.id).emit("update",{})
+    }catch(err){
+
+    }
+    
   })
   
   socket.on('delete',(data)=>{
-    db.user.findById(socket.decoded.id,(err,doc)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
       if(err){
         console.log(err)
         return;
@@ -87,26 +92,19 @@ io.on('connection', (socket) => {
       doc.save()
       io.to(socket.decoded.id).emit("update",{})
     })
+    }catch(err){
+
+    }
+    
   })
 
   socket.on('edit',(data)=>{
-    db.user.findById(socket.decoded.id,(err,docs)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,docs)=>{
       if(err){
         console.log(err)
         return
       }
-      //เผื่อแก้แบบ
-       doc.tasks.findOne()
-      /*
-      db.user.aggregate([
-          {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
-          {$unwind:"$tasks"}]).findOneAndUpdate({'_id' : data._id}, {
-              name: data.name,
-              description: data.description,
-              level: data.level,
-              done: data.done,
-              date: data.date})
-      */
        for(let i = 0; i < docs.tasks.length;  i++){
          if(docs.tasks[i]._id==data.id){
             console.log(docs.tasks[i])
@@ -126,6 +124,10 @@ io.on('connection', (socket) => {
 
       io.to(socket.decoded.id).emit("update")
     })
+    }catch(err){
+      console.log(err)
+    }
+    
   })
 
 
@@ -135,7 +137,8 @@ io.on('connection', (socket) => {
 //input lower bound date, upper bound date
 //output all date in range lower-upper, count of task in range
   socket.on('list',(data)=>{
-    db.user.aggregate([
+    try{
+      db.user.aggregate([
           {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
           {$unwind:"$tasks"},
           {$match:{"tasks.date":{$gte: new Date(data.lwr),
@@ -151,6 +154,11 @@ io.on('connection', (socket) => {
              //placeholder will replace with emit or acknowledgement
              console.log(result)
           })
+
+    }catch (err){
+      console.log(err)
+    }
+    
   })
 
   
@@ -158,7 +166,8 @@ io.on('connection', (socket) => {
     //db.user.findOne({devices: {"$in": [ data.iot_id ]  }},(err,doc)=>{
     //  console.log(doc);
     //})
-    db.user.aggregate([
+    try{
+      db.user.aggregate([
       {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
       {$unwind:"$tasks"},
       {$match:{"tasks.date":{$gte: new Date()}}},
@@ -176,12 +185,17 @@ io.on('connection', (socket) => {
         }
         console.log(result)
       })
+    }catch(err){
+
+    }
+    
   })
   //list for iot
   //input page number
   //output all task in that page number, page number count
   socket.on('list_iot',(data)=>{
-    db.user.aggregate([
+    try{
+      db.user.aggregate([
       {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
       {$unwind:"$tasks"},
       {$match:{"tasks.date":{$gte: new Date()}}},
@@ -219,9 +233,14 @@ io.on('connection', (socket) => {
         
         
       })
+    }catch(err){
+      console.log(err)
+    }
+    
   })
   socket.on('edit_iot',(data)=>{
-     if(data.done)
+    try{
+      if(data.done)
      db.user.findById(socket.decoded.id,(err,docs)=>{
        if(err){
           console.log(err)
@@ -247,23 +266,33 @@ io.on('connection', (socket) => {
       docs.save();
       io.to(socket.decoded.id).emit("update")
      })
+    }catch(err){
+      console.log(err)
+    }
+     
 
     
   })
 
   socket.on('list_iot_id',(data)=>{
-    db.user.findById(socket.decoded.id,(err,doc)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
       if(err){
         console.log(err)
         return
       }
       //placeholder will replace with emit or acknowledgement
       result =  doc.devices;
-      console.log(result);
+      socket.emit("list_iot_id",{data:result})
     })
+    }catch(err){
+      console.log(err)
+    }
+    
   })
   socket.on('add_iot_id',(data)=>{
-    db.user.findById(socket.decoded.id,(err,doc)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
       if(err){
         console.log(err)
         return
@@ -273,12 +302,18 @@ io.on('connection', (socket) => {
       doc.save()
       console.log('new device saved')
       }
-      io.to(socket.decoded.id).emit("update_setting")
+      io.to(socket.decoded.id).emit("update_setting",{})
     })
+    }catch(err){
+      console.log(err)
+    }
+
+    
   })
   
   socket.on('delete_iot_id',(data)=>{
-    db.user.findById(socket.decoded.id,(err,doc)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
       if(err){
         console.log(err)
         return
@@ -286,8 +321,12 @@ io.on('connection', (socket) => {
       doc.devices = doc.devices.filter(id => id !== data.iot_id)
       console.log('device deleted')
       doc.save();
-      io.to(socket.decoded.id).emit("update_setting")
-  })
+      io.to(socket.decoded.id).emit("update_setting",{})
+      })
+    }catch(err){
+      console.log(err)
+    }
+    
   })
 
   socket.on('time', (data) => {
