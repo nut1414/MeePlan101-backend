@@ -11,7 +11,21 @@ const path = require('path')
 const fs = require('fs')
 const utils = require('./utils')
 const db = require("./models");
+const Agenda = require("agenda");
+//process.env.TZ = 'Asia/Bangkok'
 
+const agenda = new Agenda({
+  db: { address: 'mongodb+srv://' + process.env.MONGO_USER + ':' + process.env.MONGO_PW + '@node-cluster.gpjph.mongodb.net/MeePlan?retryWrites=true&w=majority', collection: "alarm" },
+});
+
+agenda.define("alarm", async (job)=>{
+  const {userID, name, date, description,alarmID} = job.attrs.data
+  console.log(`run alarm ${alarmID}`)
+  io.to(String(userID)).emit("alarm",{name,date})
+  
+})
+
+agenda.start()
 
 const corsOptions = {
   origin: "http://localhost:8080"
@@ -39,14 +53,16 @@ function getPage(page){
 */
 
 
-io.use(verifySocket)
+io.use(verifySocket);
+
+
 
 
 io.on('connection', (socket) => {
   console.log('Connected')
   console.log(socket.decoded)
   console.log(socket.decoded.id)
-  
+
   socket.join(socket.decoded.id);
   console.log(socket.rooms);
   console.log(socket.id)
@@ -86,14 +102,12 @@ io.on('connection', (socket) => {
         return;
       }
       doc.tasks.pull({ _id: data.id })
-      
-
       console.log('task delete')
       doc.save()
       io.to(socket.decoded.id).emit("update",{})
     })
     }catch(err){
-
+      console.log(err)
     }
     
   })
@@ -103,7 +117,6 @@ io.on('connection', (socket) => {
       db.user.findById(socket.decoded.id,(err,docs)=>{
       if(err){
         console.log(err)
-        return
       }
        for(let i = 0; i < docs.tasks.length;  i++){
          if(docs.tasks[i]._id==data.id){
@@ -152,7 +165,7 @@ io.on('connection', (socket) => {
               return
             }
              //placeholder will replace with emit or acknowledgement
-             socket.emit("list",result)
+             socket.emit("list",result) 
           })
 
     }catch (err){
@@ -201,7 +214,7 @@ io.on('connection', (socket) => {
       {$unwind:"$tasks"},
       {$match:{"tasks.date":{$gte: new Date()}}},
       {$project:{"_id":"$tasks._id","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date","name": "$tasks.name"}},
-      {$sort:{status:1,date:1}}
+      {$sort:{status:-1,date:1}}
       ]).exec((err,docs)=> {
         console.log(docs)
         if(err){
@@ -329,6 +342,74 @@ io.on('connection', (socket) => {
     }
     
   })
+
+  socket.on('create_alarm',async (data)=>{
+    try{
+      db.user.findById(socket.decoded.id,async (err,doc)=>{
+      if(err){
+        console.log(err)
+        return
+      }
+      let newAlarmID = new db.mongoose.Types.ObjectId()
+      if (!data.name) data.name = ""
+      if (!data.description) data.description = ""
+      await agenda.schedule(data.date,"alarm",{
+        userID: new db.mongoose.Types.ObjectId(socket.decoded.id),
+        name: data.name,
+        date: new Date(data.date),
+        description: data.description,
+        alarmID: newAlarmID
+      })
+      doc.alarms.push(newAlarmID)
+      doc.save()
+      console.log('new alarm saved')
+      
+      })
+
+      io.to(socket.decoded.id).emit("update_alarm",{})
+    }catch(err){
+      console.log(err)
+    }
+
+  })
+
+  socket.on('delete_alarm',(data)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
+      if(err){
+        console.log(err)
+        return;
+      }
+      agenda.cancel({"data.alarmID": new db.mongoose.Types.ObjectId(data.alarm_id)})
+      doc.alarms = doc.alarms.filter(id => id !== data.alarm_id)
+      console.log('alarm deleted')
+      doc.save();
+      io.to(socket.decoded.id).emit("update_alarm",{})
+    })
+    }catch(err){
+      console.log(err)
+    }
+    
+  })
+
+  socket.on('list_alarm',async(data)=>{  
+    try{
+      let allJobs = await agenda.jobs({'data.userID':new db.mongoose.Types.ObjectId(socket.decoded.id)})
+      let result = []
+      for(let job of allJobs){
+        let {name, date, description,alarmID} = job.attrs.data
+        result.push({name, date, description,alarmID})
+      }
+      socket.emit("list_alarm",result)
+
+    }catch (err){
+      console.log(err)
+    }
+    
+  })
+  
+
+
 
   socket.on('time', (data) => {
     console.log("Time from Client :", data)

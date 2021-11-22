@@ -1,8 +1,4 @@
-// function getInfo(id){
-//   var getinfo = document.getElementById(id)
-//   return getinfo
-// }
+const utils = {}
+utils.alarm = require('./alarm')
 
-// module.exports = {
-//   getInfo
-// }
+module.exports = utils
