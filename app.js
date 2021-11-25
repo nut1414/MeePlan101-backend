@@ -4,17 +4,54 @@ const app = express();
 const { Socket } = require('socket.io');
 const bodyParser = require("body-parser");
 const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const io = require('socket.io')(http, {cors:{origins: ["https://MeePlan101-backend.meeplan.repl.co","https://meeplanwebsite-1.meeplan.repl.co","https://me.pannanap.pw", "https://api.pannanap.pw"],credentials:true}});
 const cors = require('cors');
 const process = require('process')
 const path = require('path')
 const fs = require('fs')
 const utils = require('./utils')
 const db = require("./models");
+const Agenda = require("agenda");
+//process.env.TZ = 'Asia/Bangkok'
 
+const agenda = new Agenda({
+  db: { address: 'mongodb+srv://' + process.env.MONGO_USER + ':' + process.env.MONGO_PW + '@node-cluster.gpjph.mongodb.net/MeePlan?retryWrites=true&w=majority', collection: "alarm" }
+  }, (err) => {
+    if (err) {
+        console.log(err);
+        throw err;
+    }
+    agenda.cancel({nextRunAt: null}, (err, numRemoved) => {
+        console.log(err)
+        console.log(numRemoved)
+    })
+})
+
+agenda.define("alarm", async (job)=>{
+  const {userID, name, date, description,alarmID} = job.attrs.data
+  console.log(`run alarm ${alarmID}`)
+  io.to(String(userID)).emit("alarm",{name,description,date})
+  try{
+      db.user.findById(userID,(err,doc)=>{
+      if(err){
+        console.log(err)
+        return;
+      }
+      //agenda.cancel({"data.alarmID": new db.mongoose.Types.ObjectId(data.alarm_id)})
+      doc.alarms = doc.alarms.filter(id => id !== alarmID)
+      console.log('alarm deleted')
+      doc.save();
+      io.to(socket.decoded.id).emit("update_alarm",{})
+    })
+    }catch(err){
+      console.log(err)
+    }
+})
+
+agenda.start()
 
 const corsOptions = {
-  origin: "http://localhost:8080"
+  credentials: true, origin: true
 };
 
 app.use(bodyParser.json());
@@ -39,21 +76,24 @@ function getPage(page){
 */
 
 
-io.use(verifySocket)
+io.use(verifySocket);
+
+
 
 
 io.on('connection', (socket) => {
   console.log('Connected')
   console.log(socket.decoded)
   console.log(socket.decoded.id)
-  
-  socket.join(socket.decoded.id);
-  console.log(socket.id)
-  //console.log("JWT token: ", socket.handshake.headers)
-  // { event, {bla bla}  }
-  socket.on('create',(data)=>{
 
-    db.user.findById(socket.decoded.id,(err,doc)=>{
+  socket.join(socket.decoded.id);
+  console.log(socket.rooms);
+  console.log(socket.id)
+  socket.emit("update",{})
+  //console.log("JWT token: ", socket.handshake.headers)
+  socket.on('create',(data)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
       if(err){
         console.log(err)
         return
@@ -62,68 +102,68 @@ io.on('connection', (socket) => {
         name: data.name,
         description: data.description,
         level: data.level,
-        done: data.done,
-        date: data.date
+        done: false,
+        date: new Date(data.date)
       }
       doc.tasks.push(newTask);
       doc.save()
       console.log('new task saved')
       
-    })
-    socket.broadcast.emit("update")
+      })
+      io.to(socket.decoded.id).emit("update",{})
+    }catch(err){
+      console.log(err)
+    }
+    
   })
   
   socket.on('delete',(data)=>{
-    db.user.findById(socket.decoded.id,(err,doc)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
       if(err){
         console.log(err)
         return;
       }
       doc.tasks.pull({ _id: data.id })
-      
-
       console.log('task delete')
       doc.save()
-      socket.to(socket.decoded.id).emit("update",{})
+      io.to(socket.decoded.id).emit("update",{})
     })
+    }catch(err){
+      console.log(err)
+    }
+    
   })
 
   socket.on('edit',(data)=>{
-    db.user.findById(socket.decoded.id,(err,docs)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,docs)=>{
       if(err){
         console.log(err)
-        return
       }
-      //เผื่อแก้แบบ
-      // doc.tasks.findOne()
-      // db.user.aggregate([
-      //     {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
-      //     {$unwind:"$tasks"}]).findOneAndUpdate({'_id' : data._id}, {
-      //         name: data.name,
-      //         description: data.description,
-      //         level: data.level,
-      //         done: data.done,
-      //         date: data.date})
-
-      for(let i = 0; i < docs.tasks.length;  i++){
-        if(docs.tasks[i]._id==data.id){
-           console.log(docs.tasks[i])
-           let updateTask = {
-              name: data.name,
-              description: data.description,
-              level: data.level,
-              done: data.done,
-              date: data.date,
-              _id: docs.tasks[i]._id
-            }
-           docs.tasks.set(i, updateTask)
-        }
-      }
+       for(let i = 0; i < docs.tasks.length;  i++){
+         if(docs.tasks[i]._id==data.id){
+            console.log(docs.tasks[i])
+            let updateTask = {
+               name: data.name,
+               description: data.description,
+               level: data.level,
+               done: data.done,
+               date: data.date,
+               _id: docs.tasks[i]._id
+             }
+            docs.tasks.set(i, updateTask)
+         }
+       }
       console.log('task edited')
       docs.save();
 
-      socket.to(socket.decoded.id).emit("update")
+      io.to(socket.decoded.id).emit("update")
     })
+    }catch(err){
+      console.log(err)
+    }
+    
   })
 
 
@@ -133,22 +173,28 @@ io.on('connection', (socket) => {
 //input lower bound date, upper bound date
 //output all date in range lower-upper, count of task in range
   socket.on('list',(data)=>{
-    db.user.aggregate([
+    try{
+      db.user.aggregate([
           {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
           {$unwind:"$tasks"},
           {$match:{"tasks.date":{$gte: new Date(data.lwr),
                                  $lte: new Date(data.upr)}
                   }},
-          {$project:{"_id":"$tasks._id","name": "$tasks.name","description":"$tasks.description","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date"}}
-          
+          {$project:{"_id":"$tasks._id","name": "$tasks.name","description":"$tasks.description","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date"}},
+          {$sort:{status:1,date:1}}
           ]).exec((err,result) =>{
             if(err){
               console.log(err)
               return
             }
              //placeholder will replace with emit or acknowledgement
-             console.log(result)
+             socket.emit("list",result) 
           })
+
+    }catch (err){
+      console.log(err)
+    }
+    
   })
 
   
@@ -156,7 +202,8 @@ io.on('connection', (socket) => {
     //db.user.findOne({devices: {"$in": [ data.iot_id ]  }},(err,doc)=>{
     //  console.log(doc);
     //})
-    db.user.aggregate([
+    try{
+      db.user.aggregate([
       {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
       {$unwind:"$tasks"},
       {$match:{"tasks.date":{$gte: new Date()}}},
@@ -173,37 +220,64 @@ io.on('connection', (socket) => {
           donecount: docs.filter((task)=>task.done).length
         }
         console.log(result)
+        socket.emit("pgstatus_iot",result)
       })
+    }catch(err){
+
+    }
+    
   })
   //list for iot
   //input page number
   //output all task in that page number, page number count
   socket.on('list_iot',(data)=>{
-    db.user.aggregate([
+    try{
+      db.user.aggregate([
       {$match:{"_id": db.mongoose.Types.ObjectId(socket.decoded.id)}},
       {$unwind:"$tasks"},
       {$match:{"tasks.date":{$gte: new Date()}}},
-      {$project:{"_id":"$tasks._id","name": "$tasks.name","description":"$tasks.description","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date"}},
-      {$sort:{date:1}}
+      {$project:{"_id":"$tasks._id","level":"$tasks.level","done":"$tasks.done","date":"$tasks.date","name": "$tasks.name"}},
+      {$sort:{status:-1,date:1}}
       ]).exec((err,docs)=> {
+        console.log(docs)
         if(err){
           console.log(err)
           return
         }
-        let pg = Number(data.pg)
-        let pgcount = Math.ceil(docs.length / 4)
-        if(pg > pgcount) {
-          pg = pgcount
-        }else if (pg < 1){
-          pg = 1
-        }
+        try{
+          let pg = Number(data.pg)
+          let pgcount = Math.ceil(docs.length / 4)
+          if(pg > pgcount) {
+            pg = pgcount
+          }else if (pg < 1){
+            pg = 1
+          }
         let resultdata = docs.slice((4*(pg-1)), (4*pg))
-        result = {}
-        console.log(result)
+        resultdata.forEach((element)=>{
+          element.date = element.date.toLocaleDateString('en-GB')
+          element.name2 = element.name.slice(21,42)
+          element.name = element.name.slice(0,20)
+        })
+        let processed = []
+        for(let task of resultdata){
+          processed.push( Object.values(task))
+        }
+        console.log(processed)
+        socket.emit("list_iot",{s: processed.length,pg,pgcount,"data":processed})
+        }catch(err){
+          console.log(err)
+        }
+          
+        
+        
       })
+    }catch(err){
+      console.log(err)
+    }
+    
   })
   socket.on('edit_iot',(data)=>{
-     if(data.done)
+    try{
      db.user.findById(socket.decoded.id,(err,docs)=>{
        if(err){
           console.log(err)
@@ -227,25 +301,35 @@ io.on('connection', (socket) => {
       }
       console.log('iot task delete')
       docs.save();
-      socket.to(socket.decoded.id).emit("update")
+      io.to(socket.decoded.id).emit("update")
      })
+    }catch(err){
+      console.log(err)
+    }
+     
 
     
   })
 
   socket.on('list_iot_id',(data)=>{
-    db.user.findById(socket.decoded.id,(err,doc)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
       if(err){
         console.log(err)
         return
       }
       //placeholder will replace with emit or acknowledgement
       result =  doc.devices;
-      console.log(result);
+      socket.emit("list_iot_id",{data:result})
     })
+    }catch(err){
+      console.log(err)
+    }
+    
   })
   socket.on('add_iot_id',(data)=>{
-    db.user.findById(socket.decoded.id,(err,doc)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
       if(err){
         console.log(err)
         return
@@ -255,12 +339,18 @@ io.on('connection', (socket) => {
       doc.save()
       console.log('new device saved')
       }
-      socket.to(socket.decoded.id).emit("update_setting")
+      io.to(socket.decoded.id).emit("update_setting",{})
     })
+    }catch(err){
+      console.log(err)
+    }
+
+    
   })
   
   socket.on('delete_iot_id',(data)=>{
-    db.user.findById(socket.decoded.id,(err,doc)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
       if(err){
         console.log(err)
         return
@@ -268,9 +358,87 @@ io.on('connection', (socket) => {
       doc.devices = doc.devices.filter(id => id !== data.iot_id)
       console.log('device deleted')
       doc.save();
-      socket.to(socket.decoded.id).emit("update_setting")
+      io.to(socket.decoded.id).emit("update_setting",{})
+      })
+    }catch(err){
+      console.log(err)
+    }
+    
   })
+
+  socket.on('create_alarm',async (data)=>{
+    try{
+      db.user.findById(socket.decoded.id,async (err,doc)=>{
+      if(err){
+        console.log(err)
+        return
+      }
+      let newAlarmID = new db.mongoose.Types.ObjectId()
+      if (!data.name) data.name = ""
+      if (!data.description) data.description = ""
+      await agenda.schedule(data.date,"alarm",{
+        userID: new db.mongoose.Types.ObjectId(socket.decoded.id),
+        name: data.name,
+        date: new Date(data.date),
+        description: data.description,
+        alarmID: newAlarmID
+      })
+      doc.alarms.push(newAlarmID)
+      doc.save()
+      console.log('new alarm saved')
+      
+      })
+
+      io.to(socket.decoded.id).emit("update_alarm",{})
+    }catch(err){
+      console.log(err)
+    }
+
   })
+
+  socket.on('delete_alarm',(data)=>{
+    try{
+      db.user.findById(socket.decoded.id,(err,doc)=>{
+      if(err){
+        console.log(err)
+        return;
+      }
+      agenda.cancel({"data.alarmID": new db.mongoose.Types.ObjectId(data.alarm_id)})
+      doc.alarms = doc.alarms.filter(id => id !== data.alarm_id)
+      console.log('alarm deleted')
+      doc.save();
+      io.to(socket.decoded.id).emit("update_alarm",{})
+    })
+    }catch(err){
+      console.log(err)
+    }
+    
+  })
+
+  socket.on('list_alarm',async(data)=>{  
+    try{
+      let allJobs = await agenda.jobs({'data.userID':new db.mongoose.Types.ObjectId(socket.decoded.id)})
+      let result = []
+      for(let job of allJobs){
+        let {name, date, description,alarmID} = job.attrs.data
+        result.push({name, date, description,alarmID})
+      }
+      socket.emit("list_alarm",result)
+
+    }catch (err){
+      console.log(err)
+    }
+    
+  })
+  
+  socket.on('test_alarm',async(data)=>{  
+    try{
+      io.to(socket.decoded.id).emit("alarm",{name:"test",description:"test description",date:"2021-11-26"})
+    }catch (err){
+      console.log(err)
+    }
+  })
+
 
   socket.on('time', (data) => {
     console.log("Time from Client :", data)
