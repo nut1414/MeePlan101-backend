@@ -4,7 +4,7 @@ const app = express();
 const { Socket } = require('socket.io');
 const bodyParser = require("body-parser");
 const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const io = require('socket.io')(http, {cors:{origins: ["https://MeePlan101-backend.meeplan.repl.co","https://meeplanwebsite-1.meeplan.repl.co","https://me.pannanap.pw", "https://api.pannanap.pw"],credentials:true}});
 const cors = require('cors');
 const process = require('process')
 const path = require('path')
@@ -15,20 +15,43 @@ const Agenda = require("agenda");
 //process.env.TZ = 'Asia/Bangkok'
 
 const agenda = new Agenda({
-  db: { address: 'mongodb+srv://' + process.env.MONGO_USER + ':' + process.env.MONGO_PW + '@node-cluster.gpjph.mongodb.net/MeePlan?retryWrites=true&w=majority', collection: "alarm" },
-});
+  db: { address: 'mongodb+srv://' + process.env.MONGO_USER + ':' + process.env.MONGO_PW + '@node-cluster.gpjph.mongodb.net/MeePlan?retryWrites=true&w=majority', collection: "alarm" }
+  }, (err) => {
+    if (err) {
+        console.log(err);
+        throw err;
+    }
+    agenda.cancel({nextRunAt: null}, (err, numRemoved) => {
+        console.log(err)
+        console.log(numRemoved)
+    })
+})
 
 agenda.define("alarm", async (job)=>{
   const {userID, name, date, description,alarmID} = job.attrs.data
   console.log(`run alarm ${alarmID}`)
-  io.to(String(userID)).emit("alarm",{name,date})
-  
+  io.to(String(userID)).emit("alarm",{name,description,date})
+  try{
+      db.user.findById(userID,(err,doc)=>{
+      if(err){
+        console.log(err)
+        return;
+      }
+      //agenda.cancel({"data.alarmID": new db.mongoose.Types.ObjectId(data.alarm_id)})
+      doc.alarms = doc.alarms.filter(id => id !== alarmID)
+      console.log('alarm deleted')
+      doc.save();
+      io.to(socket.decoded.id).emit("update_alarm",{})
+    })
+    }catch(err){
+      console.log(err)
+    }
 })
 
 agenda.start()
 
 const corsOptions = {
-  origin: "http://localhost:8080"
+  credentials: true, origin: true
 };
 
 app.use(bodyParser.json());
@@ -408,7 +431,13 @@ io.on('connection', (socket) => {
     
   })
   
-
+  socket.on('test_alarm',async(data)=>{  
+    try{
+      io.to(socket.decoded.id).emit("alarm",{name:"test",description:"test description",date:"2021-11-26"})
+    }catch (err){
+      console.log(err)
+    }
+  })
 
 
   socket.on('time', (data) => {

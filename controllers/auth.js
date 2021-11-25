@@ -41,7 +41,6 @@ exports.signin = (req, res) => {
       if (!passwordIsValid) {
         return res.status(401).send({
           status: "error",
-          accessToken: null,
           message: "Invalid Password!"
         });
       }
@@ -50,13 +49,13 @@ exports.signin = (req, res) => {
         expiresIn: 86400 // 24 hours
       });
 
-      
-
       res.status(200).send({
         id: user._id,
         username: user.username,
         email: user.email,
-        accessToken: token
+        accessToken: token,
+        message: "Successfully!"
+
       });
     });
 };
