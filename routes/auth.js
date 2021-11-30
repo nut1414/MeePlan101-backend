@@ -10,7 +10,8 @@ module.exports = (app) => {
     next();
   });
 
-  app.post("/api/auth/signup", checkDuplicate, auth.signup);
+  app.post("/auth/signup", checkDuplicate, auth.signup);
 
-  app.post("/api/auth/signin", auth.signin);
+  app.post("/auth/signin", auth.signin);
+  app.get("/auth/verify", auth.verify);
 };
