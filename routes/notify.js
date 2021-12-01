@@ -11,5 +11,5 @@ module.exports = (app) => {
 
   app.post("/notify/verify", notify.verify);
 
-  app.get("/notify/revoke", notify.revoke);
+  app.post("/notify/revoke", notify.revoke);
 };
