@@ -282,7 +282,7 @@ io.on('connection', (socket) => {
         { $match: { "devices": { "$in": [socket.handshake.headers["authorization"]] } } },
         { $unwind: "$tasks" },
         { $match: { "tasks.date": { $gte: new Date() } } },
-        { $project: { "_id": "$tasks._id", "level": "$tasks.level", "done": "$tasks.done", "date": "$tasks.date", "name": "$tasks.name" } },
+        { $project: { "_id": "$tasks._id", "level": "$tasks.level", "done": "$tasks.done", "date": "$tasks.date", "name": "$tasks.name", "description": "$tasks.description" } },
         { $sort: { status: -1, date: 1 } }
       ]).exec((err, docs) => {
         console.log(docs)
