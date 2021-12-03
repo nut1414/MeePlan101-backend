@@ -1,7 +1,5 @@
-const { randomInt, } = require('crypto');
 const express = require('express');
 const app = express();
-const { Socket } = require('socket.io');
 const bodyParser = require('body-parser');
 const http = require('http').createServer(app);
 const cors = require('cors');
@@ -57,9 +55,9 @@ agenda.define("alarm", async (job) => {
         return;
       }
       //agenda.cancel({"data.alarmID": new db.mongoose.Types.ObjectId(data.alarm_id)})
-      io.to(String(userID)).emit("alarm", { name, description, date })``
+      io.to(String(userID)).emit("alarm", { name, description, date:date.toLocaleString('en-GB') })
       const url = 'https://notify-api.line.me/api/notify'
-      let message = '❗Alarm - ' + name + '\n' + description
+      let message = 'Alarm❗- ' + name + '\n' + description
       const jsonData = {
         message
       }
@@ -303,7 +301,7 @@ io.on('connection', (socket) => {
           let resultdata = docs.slice((4 * (pg - 1)), (4 * pg))
           resultdata.forEach((element) => {
             element.date = element.date.toLocaleDateString('en-GB')
-            element.name2 = element.name.slice(21, 42)
+            element.name2 = element.description.slice(0, 20)
             element.name = element.name.slice(0, 20)
           })
           let processed = []
@@ -521,7 +519,7 @@ io.on('connection', (socket) => {
     console.log("Time from Client :", data)
   })
   socket.on('task', () => {
-    socket.emit("update", buffer)
+    
   })
 
   socket.on('disconnect', () => {
