@@ -57,7 +57,7 @@ agenda.define("alarm", async (job) => {
         return;
       }
       //agenda.cancel({"data.alarmID": new db.mongoose.Types.ObjectId(data.alarm_id)})
-      io.to(String(userID)).emit("alarm", { name, description, date })
+      io.to(String(userID)).emit("alarm", { name, description, date })``
       const url = 'https://notify-api.line.me/api/notify'
       let message = '❗Alarm - ' + name + '\n' + description
       const jsonData = {
@@ -229,8 +229,14 @@ io.on('connection', (socket) => {
           console.log(err)
           return
         }
+        let returnData = {
+          tag: data.tag,
+          result
+        }
+
+        console.log(returnData)
         //placeholder will replace with emit or acknowledgement
-        socket.emit("list", result)
+        socket.emit("list", returnData)
       })
 
     } catch (err) {
@@ -418,10 +424,10 @@ io.on('connection', (socket) => {
         let newAlarmID = new db.mongoose.Types.ObjectId()
         if (!data.name) data.name = ""
         if (!data.description) data.description = ""
-        await agenda.schedule(data.date, "alarm", {
+        await agenda.schedule(new Date(data.date), "alarm", {
           userID: new db.mongoose.Types.ObjectId(socket.decoded.id),
           name: data.name,
-          date: data.date,
+          date: new Date(data.date),
           description: data.description,
           alarmID: newAlarmID
         })

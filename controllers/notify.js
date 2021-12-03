@@ -93,6 +93,7 @@ exports.revoke = (req,res) =>{
             const tokenData = {line_token:""}
             let newTokenAdd = await User.findOneAndUpdate({_id:user.id},{$set:tokenData})
             if (newTokenAdd){
+                console.log('token revoke')
                 res.status(200).send({status: "ok" ,message: "Token revoked!!" })
               }else{
                 res.status(500).send({status: "error" ,message: "Internal Error" })
@@ -105,6 +106,7 @@ exports.revoke = (req,res) =>{
           res.status(500).send({status: "error" ,message: "Internal Error" })
         })
      }else{
+       console.log('line revoke err')
         res.status(400).send({status: "error" ,message: "Bad Request" })
      }
 
