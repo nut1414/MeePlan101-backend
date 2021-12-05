@@ -177,7 +177,7 @@ io.on('connection', (socket) => {
           console.log(err)
         }
         for (let i = 0; i < docs.tasks.length; i++) {
-          if (docs.tasks[i]._id == data.id) {
+          if (docs.tasks[i]._id == data._id) {
             console.log(docs.tasks[i])
             let updateTask = {
               name: data.name,
@@ -192,7 +192,6 @@ io.on('connection', (socket) => {
         }
         console.log('task edited')
         docs.save();
-
         io.to(socket.decoded.id).emit("update")
       })
     } catch (err) {
@@ -381,7 +380,7 @@ io.on('connection', (socket) => {
           return
         }
         if (data.iot_id) {
-          doc.devices.push(data.iot_id)
+          doc.devices.push(data.iot_id.toUpperCase())
           doc.save()
           console.log('new device saved')
         }
