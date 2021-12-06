@@ -8,7 +8,8 @@ var UserModel = mongoose.model("User",new mongoose.Schema({
   devices: [String],
   alarms: [String],
   iotstatus: Boolean,
-  password: String, //for password
+  password: String,
+  line_token: String
 }, {timestamps: true,strictPopulate:false}),"users");
 
 module.exports = UserModel;
