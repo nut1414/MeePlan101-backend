@@ -102,7 +102,7 @@ require('./routes/auth')(app);
 require('./routes/notify')(app);
 //require('./app/routes/user.routes')(app);
 const verifySocket = require('./middlewares/verifySocket')
-const joinRoom = require('./middlewares/joinRoom')
+//const joinRoom = require('./middlewares/joinRoom')
 //const taskHandler = require('./middlewares/taskHandler')
 /*
 function getPage(page){
@@ -125,6 +125,7 @@ io.on('connection', (socket) => {
   console.log(socket.id)
   socket.emit("update", {})
   socket.emit("update_setting", {})
+  socket.emit("update_alarm", {})
   //console.log("JWT token: ", socket.handshake.headers)
   socket.on('create', (data) => {
     try {
@@ -259,7 +260,7 @@ io.on('connection', (socket) => {
           console.log(err)
           return
         }
-        result = {
+        let result = {
           pgcount: Math.ceil(docs.length / 4),
           count: docs.length,
           donecount: docs.filter((task) => task.done).length
@@ -363,8 +364,8 @@ io.on('connection', (socket) => {
           console.log(err)
           return
         }
-        //placeholder will replace with emit or acknowledgement
-        result = doc.devices;
+        
+        let result = doc.devices;
         socket.emit("list_iot_id", { iot_id: result })
       })
     } catch (err) {
