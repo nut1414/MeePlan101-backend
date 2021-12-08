@@ -278,10 +278,12 @@ io.on('connection', (socket) => {
   //output all task in that page number, page number count
   socket.on('list_iot', (data) => {
     try {
+      let gtedate = new Date();
+      gtedate.setHours(0, 0, 1);
       db.user.aggregate([
         { $match: { "devices": { "$in": [socket.handshake.headers["authorization"]] } } },
         { $unwind: "$tasks" },
-        { $match: { "tasks.date": { $gte: new Date() } } },
+        { $match: { "tasks.date": { $gte: gtedate } } },
         { $project: { "_id": "$tasks._id", "level": "$tasks.level", "done": "$tasks.done", "date": "$tasks.date", "name": "$tasks.name", "description": "$tasks.description" } },
         { $sort: { status: -1, date: 1 } }
       ]).exec((err, docs) => {
