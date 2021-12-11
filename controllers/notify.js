@@ -20,7 +20,7 @@ exports.verify =  (req,res) => {
         const jsonData = {
           grant_type: 'authorization_code',
           code: userCode,
-          redirect_uri: 'https://meeplanwebsite-1.meeplan.repl.co/notify',
+          redirect_uri: 'https://me.pannanap.pw/notify',
           client_id: process.env.LINE_CLIENTID,
           client_secret: process.env.LINE_CLIENTSECRET,
         }

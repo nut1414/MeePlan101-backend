@@ -221,7 +221,7 @@ io.on('connection', (socket) => {
           }
         },
         { $project: { "_id": "$tasks._id", "name": "$tasks.name", "description": "$tasks.description", "level": "$tasks.level", "done": "$tasks.done", "date": "$tasks.date" } },
-        { $sort: { status: 1, date: 1 } }
+        { $sort: { status: -1, date: 1 } }
       ]).exec((err, result) => {
         if (err) {
           console.log(err)
@@ -347,7 +347,7 @@ io.on('connection', (socket) => {
             break
           }
         }
-        console.log('iot task delete')
+        console.log('iot task edit')
         docs.save();
         io.to(socket.decoded.id).emit("update")
       })
