@@ -10,5 +10,5 @@ For more information about IoT integration please visit [Qandle/MeePlan101](http
 
 ## Installation (WIP)
 `npm install`
-`npx vite build`
-`npx vite preview`
+`node app.js`
+
