@@ -1,3 +1,4 @@
+require('dotenv').config()
 const db = require("../models");
 const User = db.user;
 const process = require("process");
