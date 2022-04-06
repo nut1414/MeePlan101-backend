@@ -2,7 +2,7 @@
     "name": "meeplan101-backend",
     "version": "1.0.0",
     "description": "",
-    "main": "index.js",
+    "main": "app.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "start": "node app.js"
@@ -21,7 +21,7 @@
         "jsonwebtoken": "^8.5.1",
         "mongoose": "^6.0.12",
         "qs": "^6.10.1",
-        "socket.io": "^4.1.0",
+        "socket.io": "^4.4.1",
         "socketio-jwt": "^4.6.2"
     },
     "devDependencies": {
