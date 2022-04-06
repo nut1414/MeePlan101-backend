@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+ api:
+  build:
+   context: .
+  ports:
+   - 8080:8080
+  volumes:
+   - .:/app
+  environment:
+   NODE_ENV: production
+  command: npm start
